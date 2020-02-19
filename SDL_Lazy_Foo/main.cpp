@@ -3,6 +3,10 @@
 #include <SDL_image.h>
 #include <string>
 
+#include "data/LTexture.h"
+#include "data/Global.h"
+
+/*
 // Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -20,6 +24,8 @@ enum KeyPressTextures
 	KEY_PRESS_TEXTURE_V,
 	KEY_PRESS_TEXTURE_TOTAL
 };
+
+*/
 
 enum KeyPressFunctions
 {
@@ -47,38 +53,66 @@ bool loadMedia();
 // Frees media and shuts down SDL
 void close();
 
-// Loads individual image as texture
-SDL_Texture* loadTexture(std::string path);
-
-// The window renderer
+// Globals
 SDL_Renderer* gRenderer = NULL;
-
-// Loads individual image
-SDL_Surface* loadSurface(std::string path);
-
-// The window we'll be rendering to
 SDL_Window* gWindow = NULL;
-
-// The surface contained by the window
 SDL_Surface* gScreenSurface = NULL;
-
-// The images that correspond to a keypress
-// SDL_Surface* gKeyPressSurfaces[KEY_PRESS_SURFACE_TOTAL];
-
-// The textures that correspond to a keypress
+SDL_Surface* gCurrentSurface = NULL;
+SDL_Texture* gTexture = NULL;
+SDL_Texture* gStretchedTexture = NULL;
+SDL_Surface* gPNGSurface = NULL;
 SDL_Texture* gKeyPressTextures[KEY_PRESS_TEXTURE_TOTAL];
 
-// Current displayed image
-SDL_Surface* gCurrentSurface = NULL;
 
-// Current displayed texture
-SDL_Texture* gTexture = NULL;
+// Scene sprites
+SDL_Rect gSpriteClips[4];
+LTexture gSpriteSheetTexture;
 
-// Test stretched image
-SDL_Texture* gStretchedTexture = NULL;
+/*
+// Texture wrapper class
+class LTexture
+{
+public:
+	LTexture();
+	~LTexture();
 
-// Test PNG image
-SDL_Surface* gPNGSurface = NULL;
+	// Loads image at specified path
+	bool loadFromFile(std::string path);
+
+	// Deallocates texture
+	void free();
+
+	// Renders texture at given point
+	void render(int x, int y);
+
+	// Gets image dimensions
+	int getWidth();
+	int getHeight();
+
+private:
+
+	// The actual hardware texture
+	SDL_Texture* mTexture;
+
+	// Image dimensions
+	int mWidth;
+	int mHeight;
+};
+*/
+
+// Scene textures
+LTexture gFooTexture;
+LTexture gBackgroundTexture;
+LTexture gModulatedTexture;
+LTexture gFadeInBackgroundTexture;
+
+// Walking animation
+const int WALKING_ANIMATION_FRAMES = 4;
+SDL_Rect gSpriteClipsAnim[WALKING_ANIMATION_FRAMES];
+LTexture gSpriteSheetTextureAnim;
+
+// Frame rate
+const int frame_rate = 120;
 
 int main(int argc, char* argv[])
 {
@@ -102,10 +136,45 @@ int main(int argc, char* argv[])
 			// Event handler
 			SDL_Event e;
 
-			// Set default current surface
-			gTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+			// Modulation components
+			Uint8 r = 255;
+			Uint8 g = 255;
+			Uint8 b = 255;
+			Uint8 a = 255;
 
+			// Current animation frame
+			int frame = 0;
+
+			// Angle of rotation
+			double degrees = 0;
+
+			// Flip type
+			SDL_RendererFlip flipType = SDL_FLIP_NONE;
+
+			// Set default current surface
+			// gTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+			// Render background texture to screen
+			gBackgroundTexture.render(0, 0);
+			// gFadeInBackgroundTexture.render(0, 0);
+
+			// Render Foo to the screen
+			gFooTexture.render(240, 190);
+
+			// Render top left sprite
+			gSpriteSheetTexture.render(0, 0, &gSpriteClips[0]);
+
+			// Render top right sprite
+			gSpriteSheetTexture.render(SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]);
+
+			// Render bottom left sprite
+			gSpriteSheetTexture.render(0, SCREEN_HEIGHT - gSpriteClips[2].h, &gSpriteClips[2]);
+
+			// Render bottom right sprite
+			gSpriteSheetTexture.render(SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]);
+
+			/// --------
 			/// MAIN LOOP
+			/// --------
 			// While application is running
 			while (!quit)
 			{
@@ -214,12 +283,147 @@ int main(int argc, char* argv[])
 								SDL_RenderDrawPoint(gRenderer, SCREEN_WIDTH / 2, i);
 							}
 							break;
+
+						
+						/// Modulation colors
+						// Increase red
+						case SDLK_q:
+							// Cap if over 255
+							if (r + 32 > 255)
+							{
+								r = 255;
+							}
+							// Increment otherwise
+							else
+							{
+								r += 32;
+							}
+							break;
+
+						// Increase green
+						case SDLK_w:
+							// Cap if over 255
+							if (g + 32 > 255)
+							{
+								g = 255;
+							}
+							// Increment otherwise
+							else
+							{
+								g += 32;
+							}
+							break;
+
+						// Increase blue
+						case SDLK_e:
+							// Cap if over 255
+							if (b + 32 > 255)
+							{
+								b = 255;
+							}
+							// Increment otherwise
+							else
+							{
+								b += 32;
+							}
+							break;
+
+						// Decrease red
+						case SDLK_a:
+							// Cap if below 0
+							if (r - 32 < 0)
+							{
+								r = 0;
+							}
+							// Decrement otherwise
+							else
+							{
+								r -= 32;
+							}
+							break;
+
+						// Decrease green
+						case SDLK_s:
+							// Cap if below 0
+							if (g - 32 < 0)
+							{
+								g = 0;
+							}
+							// Decrement otherwise
+							else
+							{
+								g -= 32;
+							}
+							break;
+
+						// Decrease blue
+						case SDLK_d:
+							// Cap if below 0
+							if (b - 32 < 0)
+							{
+								b = 0;
+							}
+							// Decrement otherwise
+							else
+							{
+								b -= 32;
+							}
+							break;
+							
+
+						/*
+						// Increase alpha on w
+						case SDLK_w:
+							// Cap if over 255
+							if(a + 32 > 255)
+							{
+								a = 255;
+							}
+							// Increment otherwise
+							else
+							{
+								a += 32;
+							}
+							break;
+
+						// Decrease alpha on s
+						case SDLK_s:
+							// Cap if below 0
+							if (a - 32 < 0)
+							{
+								a = 0;
+							}
+							// Decrement otherwise
+							else
+							{
+								a -= 32;
+							}
+							break;
+							*/
+
 						default:
 							gTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 							break;
 						}
 					}
 				}
+
+				// Clear screen
+				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+				SDL_RenderClear(gRenderer);
+
+				// Modulate and render texture
+				gBackgroundTexture.setColor(r, g, b);
+				gBackgroundTexture.render(0, 0);
+
+				// Render current frame (foo_anim)
+				SDL_Rect* currentClip = &gSpriteClipsAnim[frame / (4 * frame_rate / 60)];
+				gSpriteSheetTextureAnim.render((SCREEN_WIDTH - currentClip->w) / 2, (SCREEN_HEIGHT - currentClip->h) / 2, currentClip);
+
+				// Render fade-in and fade-out background
+				// gFadeInBackgroundTexture.render(0, 0);
+				// gModulatedTexture.setAlpha(a);
+				// gModulatedTexture.render(0, 0);
 
 				// Apply the image
 				//SDL_BlitSurface(gCurrentSurface, NULL, gScreenSurface, NULL);
@@ -228,10 +432,18 @@ int main(int argc, char* argv[])
 				// Update the surface
 				//SDL_UpdateWindowSurface(gWindow);
 
-				
-
 				// Update Screen
 				SDL_RenderPresent(gRenderer);
+
+				// Go to next frame
+				++frame;
+
+				// Cycle animation
+				// Adjust denominator for frame rate
+				if (frame / (4 * frame_rate / 60) >= WALKING_ANIMATION_FRAMES)
+				{
+					frame = 0;
+				}
 			}
 
 			// Apply a stretched image on quit
@@ -289,7 +501,7 @@ bool init()
 		else
 		{
 			// Create renderer for window
-			gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+			gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 			if (gRenderer == NULL)
 			{
 				printf("Renderer could not be created! SDL Error : %s\n", SDL_GetError());
@@ -400,6 +612,102 @@ bool loadMedia()
 		success = false;
 	}
 
+	// Load Foo texture
+	if (!gFooTexture.loadFromFile("graphics/images/foo.png"))
+	{
+		printf("Failed to load Foo texture image!\n");
+		success = false;
+	}
+
+	// Load background texture
+	if (!gBackgroundTexture.loadFromFile("graphics/images/background.png"))
+	{
+		printf("Failed to load background texture image!\n");
+		success = false;
+	}
+
+	// Load sprite sheet texture
+	if (!gSpriteSheetTexture.loadFromFile("graphics/spritesets/dots.png"))
+	{
+		printf("Failed to load spritesheet texture!\n");
+		success = false;
+	}
+	else
+	{
+		// Set top left sprite
+		gSpriteClips[0].x = 0;
+		gSpriteClips[0].y = 0;
+		gSpriteClips[0].w = 100;
+		gSpriteClips[0].h = 100;
+
+		// Set top right sprite
+		gSpriteClips[1].x = 100;
+		gSpriteClips[1].y = 0;
+		gSpriteClips[1].w = 100;
+		gSpriteClips[1].h = 100;
+
+		// Set bottom left sprite
+		gSpriteClips[2].x = 0;
+		gSpriteClips[2].y = 100;
+		gSpriteClips[2].w = 100;
+		gSpriteClips[2].h = 100;
+
+		// Set bottom right sprite
+		gSpriteClips[3].x = 100;
+		gSpriteClips[3].y = 100;
+		gSpriteClips[3].w = 100;
+		gSpriteClips[3].h = 100;
+	}
+
+	// Load sprite sheet texture animated (foo_anim)
+	if (!gSpriteSheetTextureAnim.loadFromFile("graphics/spritesets/foo_anim.png"))
+	{
+		printf("Failed to load walking animation texture!\n");
+		success = false;
+	}
+	else
+	{
+		// Set sprite clips anim
+		gSpriteClipsAnim[0].x = 0;
+		gSpriteClipsAnim[0].y = 0;
+		gSpriteClipsAnim[0].w = 64;
+		gSpriteClipsAnim[0].h = 205;
+
+		gSpriteClipsAnim[1].x = 64;
+		gSpriteClipsAnim[1].y = 0;
+		gSpriteClipsAnim[1].w = 64;
+		gSpriteClipsAnim[1].h = 205;
+
+		gSpriteClipsAnim[2].x = 128;
+		gSpriteClipsAnim[2].y = 0;
+		gSpriteClipsAnim[2].w = 64;
+		gSpriteClipsAnim[2].h = 205;
+
+		gSpriteClipsAnim[3].x = 196;
+		gSpriteClipsAnim[3].y = 0;
+		gSpriteClipsAnim[3].w = 64;
+		gSpriteClipsAnim[3].h = 205;
+	}
+
+	// Load front alpha texture
+	if (!gModulatedTexture.loadFromFile("graphics/images/fadeout.png"))
+	{
+		printf("Failed to load front texture!\n");
+		success = false;
+	}
+	else
+	{
+		// Set standard alpha blending
+		gModulatedTexture.setBlendMode(SDL_BLENDMODE_BLEND);
+	}
+
+	// Load fade in background texture
+	if (!gFadeInBackgroundTexture.loadFromFile("graphics/images/fadein.png"))
+	{
+		printf("Failed to load fade in background texture!\n");
+		success = false;
+	}
+
 	return success;
 }
 
@@ -408,6 +716,8 @@ void close()
 	// Free loaded texture images
 	SDL_DestroyTexture(gTexture);
 	gTexture = NULL;
+	gFooTexture.free();
+	gBackgroundTexture.free();
 
 	/*
 	// Deallocate surface
@@ -426,6 +736,7 @@ void close()
 
 	// Quit SDL subsystems
 	SDL_Quit();
+	IMG_Quit();
 }
 
 
@@ -486,3 +797,4 @@ SDL_Texture* loadTexture(std::string path)
 
 	return newTexture;
 }
+
